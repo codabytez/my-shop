@@ -1,6 +1,7 @@
 import "server-only";
 import { formatDate, money, PAYMENT_METHODS, SHIPPING_METHODS, type ShippingMethod } from "./format";
 import type { Order, OrderItem } from "@/db/schema";
+import { siteUrl } from "./site";
 
 type EmailMessage = {
   to: string;
@@ -59,7 +60,6 @@ const esc = (s: string) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
   );
 
-const siteUrl = () => (process.env.AUTH_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
 const INK = "#141311";
 const BONE = "#EDE8DF";

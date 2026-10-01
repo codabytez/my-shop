@@ -76,7 +76,7 @@ pnpm build && pnpm start
 
 ## Deploying (Vercel)
 
-Import the repo, add the same environment variables, and set `AUTH_URL` to your production URL. Add the production callback URL in Google Cloud Console. Run `pnpm db:setup` once against the production database.
+Import the repo and add the same environment variables, but set **`AUTH_URL` to your production URL** (e.g. `https://my-shop.vercel.app`), not `http://localhost:3000`. Auth.js uses it to tell Google where to send users back, so a copied localhost value makes Google sign-in bounce back to localhost. In Google Cloud Console, add `https://YOUR_DOMAIN/api/auth/callback/google` as an authorised redirect URI; it must match `AUTH_URL` exactly. Run `pnpm db:setup` once against the production database.
 
 ## Payments: pay on delivery
 

@@ -9,6 +9,7 @@ import { CartDrawer } from "@/components/shop/cart-drawer";
 import { Footer } from "@/components/shop/footer";
 import { Nav } from "@/components/shop/nav";
 import { getCart } from "@/lib/cart";
+import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
@@ -21,7 +22,7 @@ const instrument = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.AUTH_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(siteUrl()),
   title: { default: "Morrow — Objects for slow mornings", template: "%s — Morrow" },
   description:
     "Hand-thrown ceramics, light and table objects, made in small batches by independent studios.",
