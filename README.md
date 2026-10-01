@@ -21,6 +21,7 @@ An editorial e-commerce storefront for hand-made ceramics. It's built to feel li
 - Checkout requires Google sign-in. It validates with Zod and runs in a single transaction with `SELECT … FOR UPDATE` row locks, so two shoppers can't buy the last piece. It snapshots line items, decrements stock, and clears the cart.
 - The confirmation email is sent via the Mailgun HTTP API *after* the transaction commits. A mail outage never loses an order, and `confirmation_email_sent_at` records delivery.
 - A welcome email is sent on first sign-in.
+- Payment on delivery (cash or card at the door), stored on each order with a paid/unpaid status.
 - Order confirmation page and an account page with order history. The checkout prefills the address from the shopper's last order.
 
 ## Setup
@@ -77,9 +78,20 @@ npm run build && npm start
 
 Import the repo, add the same environment variables, and set `AUTH_URL` to your production URL. Add the production callback URL in Google Cloud Console. Run `npm run setup` once against the production database.
 
-## Payments
+## Payments: pay on delivery
 
-No payment provider was in scope, so orders are recorded as **confirmed** with payment marked *on delivery*. To take cards, add a Stripe Checkout Session in `src/app/actions/checkout.ts`. Create the order as `pending`, and flip it to `confirmed` (then send the email) from the Stripe webhook.
+There is no online payment step, so nothing is mocked and no card data ever touches the site. At checkout the shopper chooses:
+
+- **Cash on delivery**: pay the courier in cash.
+- **Card on delivery**: pay on the courier's card terminal at the door.
+
+The choice is stored on the order as `payment_method`, alongside `payment_status` (`unpaid` → `paid`) and `paid_at`. The checkout, confirmation page, account history and confirmation email all show the amount **due on delivery**.
+
+When the courier collects payment, mark the order paid in `npm run db:studio` or with SQL:
+
+```sql
+update "order" set payment_status = 'paid', paid_at = now(), status = 'delivered' where number = 'MRW-XXXXXX';
+```
 
 ## Project map
 

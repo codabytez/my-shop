@@ -9,7 +9,13 @@ import { db } from "@/db";
 import { cartItems, orderItems, orders, products } from "@/db/schema";
 import { findCartId } from "@/lib/cart";
 import { EmailNotConfiguredError, sendOrderConfirmation } from "@/lib/email";
-import { SHIPPING_METHODS, shippingCost, type ShippingMethod } from "@/lib/format";
+import {
+  PAYMENT_METHODS,
+  SHIPPING_METHODS,
+  shippingCost,
+  type PaymentMethod,
+  type ShippingMethod,
+} from "@/lib/format";
 
 const schema = z.object({
   email: z.string().trim().email("Enter a valid email"),
@@ -22,6 +28,9 @@ const schema = z.object({
   postalCode: z.string().trim().min(2, "Enter your postal code").max(20),
   country: z.string().trim().min(2, "Choose a country").max(80),
   shippingMethod: z.enum(Object.keys(SHIPPING_METHODS) as [ShippingMethod, ...ShippingMethod[]]),
+  paymentMethod: z.enum(Object.keys(PAYMENT_METHODS) as [PaymentMethod, ...PaymentMethod[]], {
+    message: "Choose how you'll pay on delivery",
+  }),
   notes: z.string().trim().max(500).optional().or(z.literal("")),
 });
 
@@ -109,6 +118,7 @@ export async function placeOrder(_prev: CheckoutState, formData: FormData): Prom
           postalCode: data.postalCode,
           country: data.country,
           shippingMethod: data.shippingMethod,
+          paymentMethod: data.paymentMethod,
           notes: data.notes || null,
           subtotalCents: subtotal,
           shippingCents: shipping,

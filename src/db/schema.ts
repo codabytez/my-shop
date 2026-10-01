@@ -151,6 +151,9 @@ export const orderStatus = pgEnum("order_status", [
   "cancelled",
 ]);
 
+export const paymentMethod = pgEnum("payment_method", ["cash_on_delivery", "card_on_delivery"]);
+export const paymentStatus = pgEnum("payment_status", ["unpaid", "paid"]);
+
 export const orders = pgTable(
   "order",
   {
@@ -170,6 +173,10 @@ export const orders = pgTable(
     postalCode: text("postal_code").notNull(),
     country: text("country").notNull(),
     shippingMethod: text("shipping_method").notNull(),
+    // Payment is collected by the courier at the door; nothing is charged online.
+    paymentMethod: paymentMethod("payment_method").notNull().default("cash_on_delivery"),
+    paymentStatus: paymentStatus("payment_status").notNull().default("unpaid"),
+    paidAt: timestamp("paid_at", { mode: "date" }),
     notes: text("notes"),
     subtotalCents: integer("subtotal_cents").notNull(),
     shippingCents: integer("shipping_cents").notNull(),

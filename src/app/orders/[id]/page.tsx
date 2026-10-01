@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { Confetti } from "@/components/checkout/confetti";
 import { FadeUp, RevealLines } from "@/components/motion/reveal";
 import { ObjectArt } from "@/components/object-art";
-import { formatDate, money, SHIPPING_METHODS, type ShippingMethod } from "@/lib/format";
+import { formatDate, money, PAYMENT_METHODS, SHIPPING_METHODS, type ShippingMethod } from "@/lib/format";
 import { getOrderForUser } from "@/lib/orders";
 
 export const metadata: Metadata = { title: "Your order" };
@@ -19,6 +19,8 @@ export default async function OrderPage(props: PageProps<"/orders/[id]">) {
   const justPlaced = sp.placed === "1";
   const first = order.fullName.split(" ")[0];
   const ship = SHIPPING_METHODS[order.shippingMethod as ShippingMethod];
+  const pay = PAYMENT_METHODS[order.paymentMethod];
+  const paid = order.paymentStatus === "paid";
 
   return (
     <section className="relative px-4 pb-32 pt-36 md:px-8 md:pt-44">
@@ -74,12 +76,14 @@ export default async function OrderPage(props: PageProps<"/orders/[id]">) {
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between"><dt className="text-bone/60">Subtotal</dt><dd className="font-mono">{money(order.subtotalCents)}</dd></div>
               <div className="flex justify-between"><dt className="text-bone/60">Shipping · {ship?.label}</dt><dd className="font-mono">{order.shippingCents === 0 ? "Free" : money(order.shippingCents)}</dd></div>
-              <div className="flex justify-between"><dt className="text-bone/60">Payment</dt><dd className="font-mono">On delivery</dd></div>
+              <div className="flex justify-between"><dt className="text-bone/60">Payment</dt><dd className="font-mono">{pay.label}</dd></div>
+              <div className="flex justify-between"><dt className="text-bone/60">Status</dt><dd className="font-mono">{paid ? "Paid" : "Unpaid"}</dd></div>
             </dl>
             <div className="mt-6 flex items-baseline justify-between border-t border-bone/15 pt-6">
-              <span className="eyebrow text-bone/50">Total</span>
+              <span className="eyebrow text-bone/50">{paid ? "Paid" : "Due on delivery"}</span>
               <span className="text-display text-5xl">{money(order.totalCents)}</span>
             </div>
+            {!paid && <p className="mt-4 text-xs leading-relaxed text-bone/50">{pay.detail}</p>}
           </div>
           <div className="grid grid-cols-2 gap-8 text-sm leading-relaxed">
             <div>

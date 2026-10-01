@@ -5,7 +5,15 @@ import { createContext, useActionState, useContext, useState } from "react";
 import { placeOrder, type CheckoutState } from "@/app/actions/checkout";
 import { ObjectArt } from "@/components/object-art";
 import type { CartView } from "@/lib/cart";
-import { FREE_SHIPPING_THRESHOLD_CENTS, money, SHIPPING_METHODS, shippingCost, type ShippingMethod } from "@/lib/format";
+import {
+  FREE_SHIPPING_THRESHOLD_CENTS,
+  money,
+  PAYMENT_METHODS,
+  SHIPPING_METHODS,
+  shippingCost,
+  type PaymentMethod,
+  type ShippingMethod,
+} from "@/lib/format";
 import { COUNTRIES } from "./countries";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -17,6 +25,9 @@ export function CheckoutForm({ cart, defaults }: { cart: CartView; defaults: Rec
   const [state, action, pending] = useActionState<CheckoutState, FormData>(placeOrder, {});
   const v = { ...defaults, ...state.values };
   const [method, setMethod] = useState<ShippingMethod>((v.shippingMethod as ShippingMethod) in SHIPPING_METHODS ? (v.shippingMethod as ShippingMethod) : "standard");
+  const [payment, setPayment] = useState<PaymentMethod>(
+    (v.paymentMethod as PaymentMethod) in PAYMENT_METHODS ? (v.paymentMethod as PaymentMethod) : "cash_on_delivery",
+  );
   const ship = shippingCost(method, cart.subtotalCents);
   const total = cart.subtotalCents + ship;
   const err = state.fieldErrors ?? {};
@@ -82,7 +93,34 @@ export function CheckoutForm({ cart, defaults }: { cart: CartView; defaults: Rec
           )}
         </Step>
 
-        <Step n="04" title="Notes">
+        <Step n="04" title="Payment">
+          <p className="mb-6 max-w-lg text-sm leading-relaxed text-muted">
+            Nothing is charged online. You pay the courier when your order arrives, and only once you&apos;ve seen it.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {(Object.keys(PAYMENT_METHODS) as PaymentMethod[]).map((m) => {
+              const active = payment === m;
+              return (
+                <label
+                  key={m}
+                  className={`relative flex cursor-pointer flex-col gap-6 rounded-[2px] border p-6 transition-colors duration-500 ${active ? "border-ink bg-paper" : "border-line hover:border-ink/50"}`}
+                >
+                  <input type="radio" name="paymentMethod" value={m} checked={active} onChange={() => setPayment(m)} className="sr-only" />
+                  <span className="flex items-start justify-between">
+                    <span className="text-display text-3xl">{PAYMENT_METHODS[m].label}</span>
+                    <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${active ? "border-ink" : "border-line"}`}>
+                      {active && <motion.span layoutId="pay-dot" className="h-2.5 w-2.5 rounded-full bg-ember" />}
+                    </span>
+                  </span>
+                  <span className="text-sm leading-relaxed text-muted">{PAYMENT_METHODS[m].detail}</span>
+                </label>
+              );
+            })}
+          </div>
+          {err.paymentMethod && <p className="mt-3 text-xs text-ember">{err.paymentMethod}</p>}
+        </Step>
+
+        <Step n="05" title="Notes">
           <Field name="notes" label="Anything we should know? (optional)" defaultValue={v.notes} error={err.notes} textarea />
         </Step>
       </div>
@@ -105,10 +143,10 @@ export function CheckoutForm({ cart, defaults }: { cart: CartView; defaults: Rec
           <dl className="mt-8 space-y-3 border-t border-bone/15 pt-6 text-sm">
             <Row label="Subtotal" value={money(cart.subtotalCents)} />
             <Row label={`Shipping · ${SHIPPING_METHODS[method].label}`} value={ship === 0 ? "Free" : money(ship)} animateKey={method} />
-            <Row label="Payment" value="On delivery" />
+            <Row label="Payment" value={PAYMENT_METHODS[payment].label} animateKey={payment} />
           </dl>
           <div className="mt-6 flex items-baseline justify-between border-t border-bone/15 pt-6">
-            <span className="eyebrow text-bone/50">Total</span>
+            <span className="eyebrow text-bone/50">Due on delivery</span>
             <AnimatePresence mode="wait">
               <motion.span
                 key={total}
@@ -144,7 +182,7 @@ export function CheckoutForm({ cart, defaults }: { cart: CartView; defaults: Rec
             <span className="eyebrow relative">{pending ? "Placing your order…" : "Place order"}</span>
             <span className="relative font-mono text-sm">{pending ? <span className="inline-block animate-spin">◌</span> : money(total)}</span>
           </button>
-          <p className="mt-4 text-center text-xs text-bone/40">A confirmation email is sent the moment your order is placed.</p>
+          <p className="mt-4 text-center text-xs text-bone/40">No card details needed now. A confirmation email is sent the moment your order is placed.</p>
         </div>
       </aside>
     </form>

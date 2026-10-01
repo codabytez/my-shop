@@ -61,6 +61,7 @@ export default async function CheckoutPage() {
     postalCode: last?.postalCode ?? "",
     country: last?.country ?? "United States",
     shippingMethod: last?.shippingMethod ?? "standard",
+    paymentMethod: last?.paymentMethod ?? "cash_on_delivery",
     notes: "",
   };
 

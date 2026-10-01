@@ -1,5 +1,5 @@
 import "server-only";
-import { formatDate, money, SHIPPING_METHODS, type ShippingMethod } from "./format";
+import { formatDate, money, PAYMENT_METHODS, SHIPPING_METHODS, type ShippingMethod } from "./format";
 import type { Order, OrderItem } from "@/db/schema";
 
 type MailgunMessage = {
@@ -87,6 +87,7 @@ Objects for slow mornings. Made by hand, in small batches.<br>
 
 export function orderConfirmationEmail(order: Order, items: OrderItem[]) {
   const ship = SHIPPING_METHODS[order.shippingMethod as ShippingMethod];
+  const pay = PAYMENT_METHODS[order.paymentMethod];
   const orderUrl = `${siteUrl()}/orders/${order.id}`;
   const firstName = order.fullName.split(" ")[0];
 
@@ -132,8 +133,12 @@ Your order was placed on ${formatDate(order.createdAt)}. Each piece is now being
 <tr><td style="padding:16px 40px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 ${line("Subtotal", money(order.subtotalCents))}
 ${line(`Shipping &middot; ${esc(ship?.label ?? order.shippingMethod)}`, order.shippingCents === 0 ? "Free" : money(order.shippingCents))}
-${line("Total", money(order.totalCents), true)}
+${line("Total due on delivery", money(order.totalCents), true)}
 </table></td></tr>
+<tr><td style="padding:24px 40px 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${EMBER};"><tr><td style="padding:16px 20px;font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#4A453F;">
+<strong style="color:${INK};">${esc(pay.label)}.</strong> ${esc(pay.detail)} Nothing has been charged yet.
+</td></tr></table></td></tr>
 <tr><td style="padding:32px 40px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
 <td valign="top" width="50%" style="font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#4A453F;">
 <p style="margin:0 0 6px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${MUTED};">Shipping to</p>${address}</td>
@@ -152,7 +157,8 @@ ${line("Total", money(order.totalCents), true)}
     "",
     `Subtotal: ${money(order.subtotalCents)}`,
     `Shipping: ${order.shippingCents === 0 ? "Free" : money(order.shippingCents)}`,
-    `Total: ${money(order.totalCents)}`,
+    `Total due on delivery: ${money(order.totalCents)}`,
+    `Payment: ${pay.label}. ${pay.detail}`,
     "",
     `View your order: ${orderUrl}`,
   ].join("\n");

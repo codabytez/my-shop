@@ -56,7 +56,12 @@ export default async function AccountPage() {
                     ))}
                   </div>
                   <div className="flex items-center justify-between md:col-span-4">
-                    <span className="eyebrow rounded-full border border-line px-3 py-1.5">{order.status}</span>
+                    <span className="flex flex-col items-start gap-1.5">
+                      <span className="eyebrow rounded-full border border-line px-3 py-1.5">{order.status}</span>
+                      <span className={`eyebrow text-[10px] ${order.paymentStatus === "paid" ? "text-muted" : "text-ember"}`}>
+                        {order.paymentStatus === "paid" ? "Paid" : "Pay on delivery"}
+                      </span>
+                    </span>
                     <span className="text-display text-3xl">{money(order.totalCents)}</span>
                     <span className="transition-transform duration-700 ease-[var(--ease-out-expo)] group-hover:translate-x-2">→</span>
                   </div>
