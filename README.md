@@ -1,0 +1,103 @@
+# Morrow: objects for slow mornings
+
+An editorial e-commerce storefront for hand-made ceramics. It's built to feel like a design-award site and runs like a real shop.
+
+**Stack:** Next.js 16 (App Router, Server Actions) · React 19 · Tailwind CSS 4 · Motion · Lenis · Drizzle ORM · Postgres (Neon **or** Supabase) · Auth.js v5 with Google · Mailgun
+
+## What's inside
+
+**Experience**
+- A WebGL hero: a domain-warped "molten glaze" shader that leans toward the cursor. It renders at reduced resolution and pauses when offscreen.
+- Procedurally "photographed" products. Every object is an SVG studio still lit from its shape and glaze palette, so the catalogue needs no stock photography.
+- Smooth scrolling (Lenis), masked line-by-line headline reveals, and a scroll-scrubbed manifesto.
+- A pinned horizontal gallery, a cursor-following category preview, and magnetic buttons.
+- A custom two-part cursor with contextual labels (View / Add / Place).
+- A kiln-temperature preloader on first visit only, an ink-curtain page transition, and film grain.
+- Respects `prefers-reduced-motion` and is fully responsive.
+
+**Commerce**
+- Catalogue with category filters and sorting, product pages with stock-aware add-to-bag, and related items.
+- A cart persisted in Postgres. Guests get a cookie cart, which merges into their account cart when they sign in with Google.
+- Checkout requires Google sign-in. It validates with Zod and runs in a single transaction with `SELECT … FOR UPDATE` row locks, so two shoppers can't buy the last piece. It snapshots line items, decrements stock, and clears the cart.
+- The confirmation email is sent via the Mailgun HTTP API *after* the transaction commits. A mail outage never loses an order, and `confirmation_email_sent_at` records delivery.
+- A welcome email is sent on first sign-in.
+- Order confirmation page and an account page with order history. The checkout prefills the address from the shopper's last order.
+
+## Setup
+
+### 1. Install
+
+```bash
+npm install
+cp .env.example .env.local
+```
+
+### 2. Database: Neon or Supabase
+
+Create a project and copy the **pooled** connection string into `DATABASE_URL`:
+
+- **Neon:** Dashboard → Connect → use the `-pooler` host.
+- **Supabase:** Project Settings → Database → Connection string → *Transaction pooler* (port 6543).
+
+Then create the tables and load the catalogue:
+
+```bash
+npm run setup        # = db:migrate + db:seed
+```
+
+To browse the data, run `npm run db:studio`. After schema changes, run `npm run db:generate`.
+
+### 3. Google sign-in (Google Cloud Console)
+
+1. Go to <https://console.cloud.google.com/> and create (or pick) a project.
+2. Open **APIs & Services → OAuth consent screen**. Choose *External*, add an app name and support email, and add the `openid`, `email` and `profile` scopes.
+3. Open **APIs & Services → Credentials → Create credentials → OAuth client ID**. Choose *Web application*.
+   - Authorised JavaScript origins: `http://localhost:3000` (plus your production URL)
+   - Authorised redirect URIs: `http://localhost:3000/api/auth/callback/google` (plus `https://YOUR_DOMAIN/api/auth/callback/google`)
+4. Put the client ID and secret into `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`, and generate `AUTH_SECRET` with `npx auth secret`.
+
+### 4. Mailgun
+
+1. Add and verify a sending domain at <https://app.mailgun.com/> (Sending → Domains). Add the DNS records it gives you.
+2. Create an API key (Settings → API Keys) and set `MAILGUN_API_KEY` and `MAILGUN_DOMAIN`.
+3. If your domain is in the EU region, set `MAILGUN_API_BASE=https://api.eu.mailgun.net`.
+
+> On a Mailgun **sandbox** domain, add your own address as an *authorised recipient* first. Otherwise Mailgun rejects the send.
+
+If Mailgun isn't configured, orders still go through; the server logs a warning and skips the email.
+
+### 5. Run
+
+```bash
+npm run dev          # http://localhost:3000
+npm run build && npm start
+```
+
+## Deploying (Vercel)
+
+Import the repo, add the same environment variables, and set `AUTH_URL` to your production URL. Add the production callback URL in Google Cloud Console. Run `npm run setup` once against the production database.
+
+## Payments
+
+No payment provider was in scope, so orders are recorded as **confirmed** with payment marked *on delivery*. To take cards, add a Stripe Checkout Session in `src/app/actions/checkout.ts`. Create the order as `pending`, and flip it to `confirmed` (then send the email) from the Stripe webhook.
+
+## Project map
+
+```
+src/
+  app/
+    page.tsx                 home (hero, manifesto, gallery, index, process)
+    shop/  product/[slug]/   catalogue
+    checkout/  orders/[id]/  account/  signin/
+    actions/                 server actions: cart, checkout, auth
+    api/auth/[...nextauth]/  Auth.js route
+  auth.ts                    Auth.js + Google + Drizzle adapter
+  db/                        schema, client, seed catalogue
+  lib/                       cart, catalog, orders, email (Mailgun), formatting
+  components/
+    motion/                  shader, cursor, smooth scroll, reveals, marquee, preloader
+    home/  shop/  checkout/  page sections and commerce UI
+    object-art.tsx           procedural product renderer
+scripts/seed.ts
+drizzle/                     generated SQL migrations
+```
