@@ -2,53 +2,54 @@ import "server-only";
 import { formatDate, money, PAYMENT_METHODS, SHIPPING_METHODS, type ShippingMethod } from "./format";
 import type { Order, OrderItem } from "@/db/schema";
 
-type MailgunMessage = {
+type EmailMessage = {
   to: string;
   subject: string;
   html: string;
   text: string;
-  tags?: string[];
+  /** Resend tag values: ASCII letters, numbers, underscores and dashes only. */
+  category?: string;
+  /** Same key within 24h → Resend sends once, so a retried action can't double-email. */
+  idempotencyKey?: string;
 };
 
 export class EmailNotConfiguredError extends Error {}
 
 /**
- * Sends a message through the Mailgun HTTP API.
- * Docs: https://documentation.mailgun.com/docs/mailgun/api-reference/send/mailgun/messages
+ * Sends a message through the Resend API.
+ * Docs: https://resend.com/docs/api-reference/emails/send-email
  */
-export async function sendMail(msg: MailgunMessage) {
-  const apiKey = process.env.MAILGUN_API_KEY;
-  const domain = process.env.MAILGUN_DOMAIN;
-  const from = process.env.MAILGUN_FROM ?? (domain ? `Morrow <orders@${domain}>` : undefined);
-  // US: https://api.mailgun.net — EU: https://api.eu.mailgun.net
-  const base = (process.env.MAILGUN_API_BASE ?? "https://api.mailgun.net").replace(/\/$/, "");
+export async function sendMail(msg: EmailMessage) {
+  const apiKey = process.env.RESEND_API_KEY;
+  // Must be an address on a domain verified in Resend, e.g. "Morrow <orders@yourdomain.com>".
+  const from = process.env.EMAIL_FROM;
+  const base = (process.env.RESEND_API_BASE ?? "https://api.resend.com").replace(/\/$/, "");
 
-  if (!apiKey || !domain || !from) {
-    throw new EmailNotConfiguredError(
-      "Mailgun is not configured (MAILGUN_API_KEY, MAILGUN_DOMAIN).",
-    );
+  if (!apiKey || !from) {
+    throw new EmailNotConfiguredError("Resend is not configured (RESEND_API_KEY, EMAIL_FROM).");
   }
 
-  const body = new FormData();
-  body.set("from", from);
-  body.set("to", msg.to);
-  body.set("subject", msg.subject);
-  body.set("html", msg.html);
-  body.set("text", msg.text);
-  for (const tag of msg.tags ?? []) body.append("o:tag", tag);
-
-  const res = await fetch(`${base}/v3/${domain}/messages`, {
+  const res = await fetch(`${base}/emails`, {
     method: "POST",
     headers: {
-      Authorization: `Basic ${Buffer.from(`api:${apiKey}`).toString("base64")}`,
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      ...(msg.idempotencyKey ? { "Idempotency-Key": msg.idempotencyKey } : {}),
     },
-    body,
+    body: JSON.stringify({
+      from,
+      to: [msg.to],
+      subject: msg.subject,
+      html: msg.html,
+      text: msg.text,
+      ...(msg.category ? { tags: [{ name: "category", value: msg.category }] } : {}),
+    }),
   });
 
   if (!res.ok) {
-    throw new Error(`Mailgun ${res.status}: ${await res.text()}`);
+    throw new Error(`Resend ${res.status}: ${await res.text()}`);
   }
-  return (await res.json()) as { id: string; message: string };
+  return (await res.json()) as { id: string };
 }
 
 /* ───────────────────────────── Templates ───────────────────────────── */
@@ -168,7 +169,14 @@ ${line("Total due on delivery", money(order.totalCents), true)}
 
 export async function sendOrderConfirmation(order: Order, items: OrderItem[]) {
   const { subject, html, text } = orderConfirmationEmail(order, items);
-  return sendMail({ to: order.email, subject, html, text, tags: ["order-confirmation"] });
+  return sendMail({
+    to: order.email,
+    subject,
+    html,
+    text,
+    category: "order_confirmation",
+    idempotencyKey: `order-confirmation/${order.id}`,
+  });
 }
 
 export async function sendWelcomeEmail({ to, name }: { to: string; name: string | null }) {
@@ -187,6 +195,6 @@ Your account is ready. Everything you order will live here, from the first unbox
     subject: "Welcome to Morrow",
     html,
     text: `Welcome, ${first}. Your Morrow account is ready: ${siteUrl()}/shop`,
-    tags: ["welcome"],
+    category: "welcome",
   });
 }

@@ -158,7 +158,7 @@ export async function placeOrder(_prev: CheckoutState, formData: FormData): Prom
     return { error: "Something went wrong placing your order. Your order was not placed. Please try again.", values };
   }
 
-  // Email is sent after commit: a Mailgun hiccup must never roll back a real order.
+  // Email is sent after commit: an email-provider hiccup must never roll back a real order.
   try {
     const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
     const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
