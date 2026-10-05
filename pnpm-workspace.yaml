@@ -6,3 +6,5 @@ minimumReleaseAgeExclude:
   - motion-dom@13.5.0
   - motion-utils@13.5.0
   - motion@13.5.0
+overrides:
+  esbuild@<=0.24.2: ^0.25.0
